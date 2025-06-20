@@ -1,0 +1,27 @@
+{
+  "name": "telegram-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "4.17.21",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "4.18.2",
+    "node-telegram-bot-api": "^0.66.0",
+    "stripe": "^18.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.3",
+    "@types/node-telegram-bot-api": "^0.64.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test:simulation": "SIMULATION_ONLY=true ts-node src/index.ts",
+    "test:stripe": "TEST_MODE=true ts-node src/index.ts",
+    "test:real": "ENABLE_REAL_PAYMENTS=true ts-node src/index.ts"
+  }
+}

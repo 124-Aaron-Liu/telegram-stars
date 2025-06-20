@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Stars 商店</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      .tg-btn {
+        display: inline-block;
+        padding: 12px 32px;
+        background-color: #229ED9;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: bold;
+        text-decoration: none;
+        box-shadow: 0 2px 8px rgba(34,158,217,0.15);
+        transition: background 0.2s;
+        cursor: pointer;
+      }
+      .tg-btn:hover {
+        background-color: #176ca6;
+      }
+      .product-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin: 20px 0;
+      }
+    </style>
+</head>
+<body>
+  <div class="product-list">
+    <button class="tg-btn" onclick="buyProduct('gold_100')">🛒 購買 10 金幣</button>
+    <button class="tg-btn" onclick="buyProduct('gold_200')">🛒 購買 20 金幣</button>
+    <button class="tg-btn" onclick="buyProduct('gold_500')">🛒 購買 50 金幣</button>
+  </div>
+
+  <script>
+    // 取得 Telegram WebApp 物件
+    const tg = window.Telegram.WebApp;
+
+    // 初始化 WebApp
+    tg.ready();
+
+    async function buyProduct(productId) {
+      try {
+        alert('🛒 用戶點擊購買按鈕:', productId);
+
+        // 檢查 WebApp 是否可用
+        if (!window.Telegram?.WebApp) {
+          alert('❌ 無法載入 Telegram WebApp');
+          return;
+        }
+
+        // 取得用戶 ID
+        let userId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+        if (!userId) {
+          alert('⚠️ 無法取得用戶 ID，使用測試用戶 ID');
+          userId = 5000651398; // 你的測試用戶 ID
+        }
+
+        alert(`👤 用戶 ID: ${userId}`);
+
+        // 1. Mini App 前端呼叫後端 API
+        alert('🌐 呼叫後端 API...');
+
+        const res = await fetch('/api/create-invoice', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            productId: productId,
+            userId: userId
+          })
+        });
+
+        alert('📡 API 回應狀態:', res.status);
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`API 錯誤: ${res.status} - ${errorText}`);
+        }
+
+        const data = await res.json();
+        alert('📄 收到 API 回應:', data);
+
+        if (!data.success) {
+          throw new Error(data.error || 'API 呼叫失敗');
+        }
+
+        // 2. Mini App 前端接收 invoiceUrl
+        const invoiceUrl = data.invoiceUrl;
+        alert('🔗 收到 invoice URL:', invoiceUrl);
+
+        // 3. Mini App 呼叫 Telegram.WebApp.openInvoice
+        if (typeof window.Telegram.WebApp.openInvoice === 'function') {
+          alert('💳 開啟支付視窗...');
+          window.Telegram.WebApp.openInvoice(invoiceUrl, (status) => {
+            alert(`💳 支付狀態: ${status}`);
+
+            if (status === 'paid') {
+              alert('🎉 支付成功！您的商品已準備就緒');
+              // 這裡可以更新 UI 或發送成功訊息
+            } else if (status === 'cancelled') {
+              alert('❌ 已取消支付');
+            } else {
+              alert('❌ 支付失敗，請重試');
+            }
+          });
+        } else {
+          alert('⚠️ openInvoice 不可用，使用備用方案');
+          // 備用方案：直接跳轉到 invoice URL
+          if (window.Telegram.WebApp.openTelegramLink) {
+            window.Telegram.WebApp.openTelegramLink(invoiceUrl);
+          } else {
+            window.open(invoiceUrl, '_blank');
+          }
+        }
+
+      } catch (error) {
+        alert.error('❌ 錯誤:', error);
+        alert(`錯誤: ${error.message}`);
+      }
+    }
+  </script>
+</body>
+</html>
