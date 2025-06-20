@@ -22,6 +22,7 @@
     "build": "tsc",
     "test:simulation": "SIMULATION_ONLY=true ts-node src/index.ts",
     "test:stripe": "TEST_MODE=true ts-node src/index.ts",
-    "test:real": "ENABLE_REAL_PAYMENTS=true ts-node src/index.ts"
+    "test:real": "ENABLE_REAL_PAYMENTS=true ts-node src/index.ts",
+    "test:webhook": "ts-node src/index-webhook.ts"
   }
 }
