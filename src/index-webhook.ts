@@ -123,7 +123,7 @@ async function handlePayment(chatId: number, product: Product, userId: number) {
       product.title,
       product.description,
       product.id,
-      TOKEN as string,
+      "",
       "XTR",
       [{ label: product.title, amount: product.priceStars }],
       {
@@ -162,7 +162,7 @@ async function handlePayment(chatId: number, product: Product, userId: number) {
 
 // ----------------------------------------------------
 // 處理預結帳查詢 (pre_checkout_query)
-async function handlePreCheckoutQuery(query: any) {
+bot.on("pre_checkout_query", async (query) => {
   const productId = query.invoice_payload;
   const product = products.find((p) => p.id === productId);
 
@@ -180,11 +180,31 @@ async function handlePreCheckoutQuery(query: any) {
     });
     console.warn(`❌ 預結帳查詢失敗：${query.id} - 無效訂單`);
   }
-}
+});
+
+// // 處理預結帳查詢 (pre_checkout_query)
+// async function handlePreCheckoutQuery(query: any) {
+//   const productId = query.invoice_payload;
+//   const product = products.find((p) => p.id === productId);
+
+//   console.log(`🔍 收到預結帳查詢：${query.id}`);
+//   console.log(`商品 ID：${productId}`);
+//   console.log(`請求金額：${query.total_amount} ${query.currency}`);
+
+//   if (product && query.total_amount === product.priceStars) {
+//     await bot.answerPreCheckoutQuery(query.id, true);
+//     console.log(`✅ 預結帳查詢通過：${query.id}`);
+//   } else {
+//     await bot.answerPreCheckoutQuery(query.id, false, {
+//       error_message:
+//         "❌ 您的訂單無效，商品資訊可能已更新或庫存不足。請重新嘗試。",
+//     });
+//     console.warn(`❌ 預結帳查詢失敗：${query.id} - 無效訂單`);
+//   }
+// }
 
 // ----------------------------------------------------
-// 處理成功支付 (successful_payment)
-async function handleSuccessfulPayment(msg: any) {
+bot.on("successful_payment", async (msg) => {
   const chatId = msg.chat.id;
   const payment = msg.successful_payment;
 
@@ -220,7 +240,46 @@ async function handleSuccessfulPayment(msg: any) {
     );
     console.error(`❌ 支付成功但商品 ID (${productId}) 無法識別！`);
   }
-}
+});
+
+// // 處理成功支付 (successful_payment)
+// async function handleSuccessfulPayment(msg: any) {
+//   const chatId = msg.chat.id;
+//   const payment = msg.successful_payment;
+
+//   if (!payment) {
+//     console.error("❌ 支付資訊不存在！");
+//     return;
+//   }
+
+//   const productId = payment.invoice_payload;
+//   const totalPaidStars = payment.total_amount;
+//   const currency = payment.currency;
+//   const telegramChargeId = payment.telegram_payment_charge_id;
+
+//   console.log(`🎉 支付成功！`);
+//   console.log(`用戶：${msg.from?.first_name} (ID: ${msg.from?.id})`);
+//   console.log(`商品：${productId}`);
+//   console.log(`金額：${totalPaidStars} ${currency}`);
+//   console.log(`Telegram Charge ID：${telegramChargeId}`);
+
+//   const purchasedProduct = products.find((p) => p.id === productId);
+
+//   if (purchasedProduct) {
+//     await bot.sendMessage(
+//       chatId,
+//       `🎉 **支付成功！**\n\n您已成功購買：${purchasedProduct.title}\n\n${purchasedProduct.secretContent}\n\n💰 支付金額：${totalPaidStars} ${currency}\n📋 交易 ID：${telegramChargeId}`
+//     );
+//     // 記錄交易
+//     console.log(`📝 交易記錄：用戶 ${msg.from?.id} 購買 ${productId} 成功`);
+//   } else {
+//     await bot.sendMessage(
+//       chatId,
+//       "❌ 感謝您的購買！但我們無法識別您購買的商品。請聯繫客服。"
+//     );
+//     console.error(`❌ 支付成功但商品 ID (${productId}) 無法識別！`);
+//   }
+// }
 
 // ----------------------------------------------------
 // 通用錯誤處理
@@ -256,13 +315,9 @@ app.post(
   async (req, res) => {
     try {
       console.log("📥 收到 Webhook 請求");
+      console.log(req.headers);
       console.log(req.body);
-      if (req.body?.pre_checkout_query) {
-        await handlePreCheckoutQuery(req.body.pre_checkout_query);
-      }
-      if (req.body?.message?.successful_payment) {
-        await handleSuccessfulPayment(req.body.message);
-      }
+      bot.processUpdate(req.body);
       // 直接回應 200，讓 bot 的事件處理器處理更新
       res.sendStatus(200);
     } catch (error) {
@@ -292,7 +347,7 @@ app.post("/api/create-invoice", async (req, res) => {
       product.title,
       product.description,
       product.id, // payload
-      TOKEN as string,
+      "", // payment provider token ，telegram stars留空
       "XTR", // currency
       [
         {
@@ -355,7 +410,9 @@ async function setupWebhook() {
 
     // 設定新的 webhook
     console.log("🔧 設定新 webhook...");
-    await bot.setWebHook(webhookUrl);
+    await bot.setWebHook(webhookUrl, {
+      secret_token: "abcdefg",
+    });
 
     console.log("✅ Webhook 設定成功！");
 
